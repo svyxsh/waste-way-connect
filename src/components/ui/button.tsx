@@ -15,6 +15,10 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        pending: "bg-status-pending text-status-pending-foreground hover:bg-status-pending/90",
+        assigned: "bg-status-assigned text-status-assigned-foreground hover:bg-status-assigned/90",
+        completed: "bg-status-completed text-status-completed-foreground hover:bg-status-completed/90",
+        hero: "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70 shadow-lg",
       },
       size: {
         default: "h-10 px-4 py-2",

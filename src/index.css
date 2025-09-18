@@ -9,34 +9,53 @@ All colors MUST be HSL.
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 158 64% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 158 64% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 158 64% 8%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 158 64% 35%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 158 30% 96%;
+    --secondary-foreground: 158 64% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 158 30% 96%;
+    --muted-foreground: 158 20% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 158 30% 94%;
+    --accent-foreground: 158 64% 15%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 158 20% 90%;
+    --input: 158 20% 94%;
+    --ring: 158 64% 35%;
+
+    /* Status Colors */
+    --status-pending: 45 93% 47%;
+    --status-pending-foreground: 26 83% 14%;
+    --status-assigned: 217 91% 60%;
+    --status-assigned-foreground: 0 0% 98%;
+    --status-completed: 158 64% 35%;
+    --status-completed-foreground: 0 0% 98%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(158, 64%, 35%), hsl(158, 64%, 45%));
+    --gradient-hero: linear-gradient(135deg, hsl(158, 64%, 35%), hsl(158, 64%, 25%));
+    --gradient-card: linear-gradient(135deg, hsl(0, 0%, 100%), hsl(158, 30%, 98%));
 
     --radius: 0.5rem;
+
+    /* Shadows */
+    --shadow-lg: 0 10px 15px -3px hsl(var(--primary) / 0.1), 0 4px 6px -2px hsl(var(--primary) / 0.05);
+    
+    /* Animations */
+    --transition-all: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     --sidebar-background: 0 0% 98%;
 
