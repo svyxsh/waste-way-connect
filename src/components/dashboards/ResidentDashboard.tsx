@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { GarbageRequest } from '@/types';
 import { Plus, MapPin, Calendar, User, Loader2 } from 'lucide-react';
 import { db, storage } from '@/lib/firebase';
 import { collection, addDoc, query, where, onSnapshot, serverTimestamp, GeoPoint } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import imageCompression from 'browser-image-compression';
 import LocationPicker from '@/components/ui/LocationPicker';
 import {
   Sheet,
@@ -28,6 +30,8 @@ export const ResidentDashboard: React.FC = () => {
   const [requests, setRequests] = useState<GarbageRequest[]>([]);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Submitting...');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [formData, setFormData] = useState({
     description: '',
     latitude: null as number | null,
@@ -49,8 +53,6 @@ export const ResidentDashboard: React.FC = () => {
             id: doc.id,
             ...data,
             createdAt: data.createdAt?.toDate() || new Date(),
-            location: data.location,
-            coordinates: data.coordinates,
           } as GarbageRequest;
         }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
         setRequests(requestsData);
@@ -63,11 +65,7 @@ export const ResidentDashboard: React.FC = () => {
   }, [currentUser]);
 
   const handleLocationSelect = useCallback((location: { lat: number; lng: number }) => {
-    setFormData(prev => ({
-      ...prev,
-      latitude: location.lat,
-      longitude: location.lng,
-    }));
+    setFormData(prev => ({ ...prev, latitude: location.lat, longitude: location.lng }));
   }, []);
 
   const handleSubmitRequest = async (e: React.FormEvent) => {
@@ -82,15 +80,47 @@ export const ResidentDashboard: React.FC = () => {
     }
 
     setIsLoading(true);
+    setLoadingMessage('Starting...');
+    setUploadProgress(0);
 
     try {
       let photoUrl = '';
       if (imageFile) {
-        const imageRef = ref(storage, `garbage-images/${imageFile.name + Date.now()}`);
-        const snapshot = await uploadBytes(imageRef, imageFile);
-        photoUrl = await getDownloadURL(snapshot.ref);
+        setLoadingMessage('Compressing image...');
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        };
+        const compressedFile = await imageCompression(imageFile, options);
+
+        setLoadingMessage('Uploading image...');
+        const imageRef = ref(storage, `garbage-images/${currentUser.id}-${Date.now()}`);
+        const uploadTask = uploadBytesResumable(imageRef, compressedFile);
+
+        photoUrl = await new Promise<string>((resolve, reject) => {
+          uploadTask.on('state_changed',
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setUploadProgress(progress);
+            },
+            (error) => {
+              console.error("Upload failed:", error);
+              reject(error);
+            },
+            async () => {
+              try {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve(downloadURL);
+              } catch (error) {
+                reject(error);
+              }
+            }
+          );
+        });
       }
 
+      setLoadingMessage('Finalizing request...');
       await addDoc(collection(db, 'garbage_requests'), {
         resident_id: currentUser.id,
         residentName: currentUser.name,
@@ -108,24 +138,15 @@ export const ResidentDashboard: React.FC = () => {
       setIsSheetOpen(false);
     } catch (error) {
       console.error('Error creating request:', error);
-      alert("Failed to create request. Please try again.");
+      alert(`Failed to create request. ${error instanceof Error ? error.message : 'Please try again.'}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const getStatusBadge = (status: string) => {
-    const variants = {
-      pending: 'pending',
-      assigned: 'assigned',
-      completed: 'completed'
-    } as const;
-    
-    return (
-      <Badge variant={variants[status as keyof typeof variants] || 'default'}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
+    const variants = { pending: 'pending', assigned: 'assigned', completed: 'completed' } as const;
+    return <Badge variant={variants[status as keyof typeof variants] || 'default'}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
   };
 
   return (
@@ -136,9 +157,7 @@ export const ResidentDashboard: React.FC = () => {
             <h1 className="text-2xl font-bold text-primary">CleanConnect</h1>
             <p className="text-muted-foreground">Welcome, {currentUser?.name}</p>
           </div>
-          <Button variant="outline" onClick={logout}>
-            Sign Out
-          </Button>
+          <Button variant="outline" onClick={logout}>Sign Out</Button>
         </div>
       </header>
 
@@ -146,12 +165,7 @@ export const ResidentDashboard: React.FC = () => {
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <div className="flex justify-between items-center">
             <h2 className="text-3xl font-bold">Resident Dashboard</h2>
-            <SheetTrigger asChild>
-              <Button variant="hero" className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Pickup Request
-              </Button>
-            </SheetTrigger>
+            <SheetTrigger asChild><Button variant="hero" className="gap-2"><Plus className="h-4 w-4" />New Pickup Request</Button></SheetTrigger>
           </div>
 
           <div className="grid gap-4">
@@ -160,11 +174,7 @@ export const ResidentDashboard: React.FC = () => {
               <Card>
                 <CardContent className="text-center py-8">
                   <p className="text-muted-foreground">No pickup requests yet</p>
-                  <SheetTrigger asChild>
-                    <Button variant="hero" className="mt-4">
-                      Create Your First Request
-                    </Button>
-                  </SheetTrigger>
+                  <SheetTrigger asChild><Button variant="hero" className="mt-4">Create Your First Request</Button></SheetTrigger>
                 </CardContent>
               </Card>
             ) : (
@@ -176,42 +186,22 @@ export const ResidentDashboard: React.FC = () => {
                         <CardContent className="p-6">
                           <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-3">
-                              <div className="bg-primary/10 p-2 rounded-lg">
-                                <MapPin className="h-5 w-5 text-primary" />
-                              </div>
+                              <div className="bg-primary/10 p-2 rounded-lg"><MapPin className="h-5 w-5 text-primary" /></div>
                               <div>
                                 {request.coordinates ? (
-                                  <a
-                                    href={`https://www.google.com/maps?q=${request.coordinates.latitude},${request.coordinates.longitude}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="font-medium hover:underline"
-                                  >
-                                    {request.location}
-                                  </a>
+                                  <a href={`https://www.google.com/maps?q=${request.coordinates.latitude},${request.coordinates.longitude}`} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">{request.location}</a>
                                 ) : (
                                   <p className="font-medium">{request.location}</p>
                                 )}
-                                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {new Date(request.createdAt).toLocaleDateString()}
-                                </p>
+                                <p className="text-sm text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(request.createdAt).toLocaleDateString()}</p>
                               </div>
                             </div>
                             {getStatusBadge(request.status)}
                           </div>
-                          
                           <p className="text-muted-foreground mb-3">{request.description}</p>
-                          
-                          {request.photoUrl && (
-                            <img src={request.photoUrl} alt="Garbage" className="rounded-md max-h-48 w-auto mt-2" />
-                          )}
-
+                          {request.photoUrl && <img src={request.photoUrl} alt="Garbage" className="rounded-md max-h-48 w-auto mt-2" />}
                           {request.status === 'assigned' && request.cleanerName && (
-                            <div className="flex items-center gap-2 text-sm mt-3">
-                              <User className="h-4 w-4" />
-                              <span>Assigned to: <strong>{request.cleanerName}</strong></span>
-                            </div>
+                            <div className="flex items-center gap-2 text-sm mt-3"><User className="h-4 w-4" /><span>Assigned to: <strong>{request.cleanerName}</strong></span></div>
                           )}
                         </CardContent>
                       </Card>
@@ -225,9 +215,7 @@ export const ResidentDashboard: React.FC = () => {
           <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col">
             <SheetHeader>
               <SheetTitle>Create Pickup Request</SheetTitle>
-              <SheetDescription>
-                Describe your garbage pickup needs and set the location on the map.
-              </SheetDescription>
+              <SheetDescription>Describe your garbage pickup needs and set the location on the map.</SheetDescription>
             </SheetHeader>
             <ScrollArea className="flex-grow p-1">
               <form id="pickup-request-form" onSubmit={handleSubmitRequest} className="space-y-4 py-4 pr-6">
@@ -237,33 +225,25 @@ export const ResidentDashboard: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Photo of Garbage (Optional)</label>
-                  <Input 
-                    type="file" 
-                    onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)}
-                    className="file:text-primary file:font-medium"
-                  />
+                  <Input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)} className="file:text-primary file:font-medium" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Description</label>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Describe what needs to be collected (furniture, boxes, organic waste, etc.)"
-                    required
-                    rows={5}
-                  />
+                  <Textarea value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} placeholder="Describe what needs to be collected (furniture, boxes, organic waste, etc.)" required rows={5} />
                 </div>
               </form>
             </ScrollArea>
             <SheetFooter className="pt-4">
-              <SheetClose asChild>
-                <Button type="button" variant="outline" disabled={isLoading}>
-                  Cancel
-                </Button>
-              </SheetClose>
+              {isLoading && (
+                <div className="w-full flex items-center gap-2">
+                  <Progress value={uploadProgress} className="w-full" />
+                  <span className="text-sm whitespace-nowrap">{Math.round(uploadProgress)}%</span>
+                </div>
+              )}
+              <SheetClose asChild><Button type="button" variant="outline" disabled={isLoading}>Cancel</Button></SheetClose>
               <Button type="submit" variant="hero" form="pickup-request-form" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isLoading ? 'Submitting...' : 'Submit Request'}
+                {isLoading ? loadingMessage : 'Submit Request'}
               </Button>
             </SheetFooter>
           </SheetContent>
