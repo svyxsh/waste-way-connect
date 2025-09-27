@@ -1,45 +1,58 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { GarbageRequest } from '@/types';
-import { MapPin, Calendar, User, CheckCircle } from 'lucide-react';
-
-// Mock data for demonstration
-const mockAssignedRequests: GarbageRequest[] = [
-  {
-    id: '2',
-    residentId: 'user1',
-    residentName: 'John Doe',
-    description: 'Garden waste and organic materials',
-    location: '123 Main St, Apt 4B',
-    status: 'assigned',
-    cleanerId: 'cleaner1',
-    cleanerName: 'Jane Smith',
-    createdAt: new Date('2024-01-10'),
-    updatedAt: new Date('2024-01-12'),
-  },
-  {
-    id: '3',
-    residentId: 'user2',
-    residentName: 'Alice Johnson',
-    description: 'Old electronics and cables',
-    location: '456 Oak Ave, House 12',
-    status: 'assigned',
-    cleanerId: 'cleaner1',
-    cleanerName: 'Jane Smith',
-    createdAt: new Date('2024-01-14'),
-    updatedAt: new Date('2024-01-14'),
-  },
-];
+import { MapPin, Calendar, User, CheckCircle, Navigation } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
+import RequestMap from '@/components/ui/RequestMap';
 
 export const CleanerDashboard: React.FC = () => {
   const { currentUser, logout } = useAuth();
+  const [assignedRequests, setAssignedRequests] = useState<GarbageRequest[]>([]);
 
-  const handleMarkCompleted = (requestId: string) => {
-    // TODO: Implement Firebase status update
-    console.log('Marking request as completed:', requestId);
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const requestsQuery = query(
+      collection(db, 'garbage_requests'),
+      where('cleaner_id', '==', currentUser.id),
+      where('status', '==', 'assigned')
+    );
+
+    const unsubscribe = onSnapshot(requestsQuery, (snapshot) => {
+      const requestsData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+        } as GarbageRequest;
+      }).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+      setAssignedRequests(requestsData);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  const handleMarkCompleted = async (requestId: string) => {
+    const requestDocRef = doc(db, 'garbage_requests', requestId);
+    try {
+      await updateDoc(requestDocRef, {
+        status: 'completed',
+        updatedAt: new Date(),
+      });
+      console.log('Request marked as completed');
+    } catch (error) {
+      console.error("Error updating request: ", error);
+    }
+  };
+
+  const handleNavigate = (latitude: number, longitude: number) => {
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`, '_blank');
   };
 
   return (
@@ -61,14 +74,14 @@ export const CleanerDashboard: React.FC = () => {
           <h2 className="text-3xl font-bold">Cleaner Dashboard</h2>
           <div className="flex items-center gap-4">
             <Badge variant="assigned" className="text-lg px-3 py-1">
-              {mockAssignedRequests.length} Active Jobs
+              {assignedRequests.length} Active Jobs
             </Badge>
           </div>
         </div>
 
         <div className="grid gap-4">
           <h3 className="text-xl font-semibold">Assigned Requests</h3>
-          {mockAssignedRequests.length === 0 ? (
+          {assignedRequests.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
                 <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -79,7 +92,7 @@ export const CleanerDashboard: React.FC = () => {
               </CardContent>
             </Card>
           ) : (
-            mockAssignedRequests.map((request) => (
+            assignedRequests.map((request) => (
               <Card key={request.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex justify-between items-start">
@@ -103,9 +116,13 @@ export const CleanerDashboard: React.FC = () => {
                       <p className="text-muted-foreground">{request.description}</p>
                     </div>
                     
+                    {request.coordinates && (
+                      <RequestMap latitude={request.coordinates.latitude} longitude={request.coordinates.longitude} />
+                    )}
+
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4" />
-                      <span>Assigned: {request.updatedAt.toLocaleDateString()}</span>
+                      <span>Assigned: {new Date(request.updatedAt).toLocaleDateString()}</span>
                     </div>
 
                     <div className="flex gap-2 pt-2">
@@ -117,9 +134,16 @@ export const CleanerDashboard: React.FC = () => {
                         <CheckCircle className="h-4 w-4" />
                         Mark as Completed
                       </Button>
-                      <Button variant="outline">
-                        View Details
-                      </Button>
+                      {request.coordinates && (
+                        <Button 
+                          variant="outline"
+                          onClick={() => handleNavigate(request.coordinates.latitude, request.coordinates.longitude)}
+                          className="gap-2"
+                        >
+                          <Navigation className="h-4 w-4" />
+                          Navigate
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>

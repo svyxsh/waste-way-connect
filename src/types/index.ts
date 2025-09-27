@@ -7,17 +7,21 @@ export interface User {
 
 export interface GarbageRequest {
   id: string;
-  residentId: string;
+  resident_id: string;
   residentName: string;
   description: string;
   photoUrl?: string;
   location: string;
   status: 'pending' | 'assigned' | 'completed';
-  cleanerId?: string;
+  cleaner_id?: string;
   cleanerName?: string;
   createdAt: Date;
   updatedAt: Date;
   completionPhotoUrl?: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export type UserRole = 'resident' | 'cleaner' | 'admin';

@@ -1,72 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
-import { GarbageRequest } from '@/types';
+import { GarbageRequest, UserProfile } from '@/types';
 import { MapPin, Calendar, User, Users, ClipboardList, TrendingUp } from 'lucide-react';
-
-// Mock data for demonstration
-const mockAllRequests: GarbageRequest[] = [
-  {
-    id: '1',
-    residentId: 'user1',
-    residentName: 'John Doe',
-    description: 'Large furniture items and boxes need pickup',
-    location: '123 Main St, Apt 4B',
-    status: 'pending',
-    createdAt: new Date('2024-01-15'),
-    updatedAt: new Date('2024-01-15'),
-  },
-  {
-    id: '2',
-    residentId: 'user1',
-    residentName: 'John Doe',
-    description: 'Garden waste and organic materials',
-    location: '123 Main St, Apt 4B',
-    status: 'assigned',
-    cleanerId: 'cleaner1',
-    cleanerName: 'Jane Smith',
-    createdAt: new Date('2024-01-10'),
-    updatedAt: new Date('2024-01-12'),
-  },
-  {
-    id: '4',
-    residentId: 'user3',
-    residentName: 'Bob Wilson',
-    description: 'Construction debris cleanup',
-    location: '789 Pine Rd, Unit 8',
-    status: 'completed',
-    cleanerId: 'cleaner2',
-    cleanerName: 'Mike Johnson',
-    createdAt: new Date('2024-01-08'),
-    updatedAt: new Date('2024-01-09'),
-  },
-];
-
-const mockCleaners = [
-  { id: 'cleaner1', name: 'Jane Smith' },
-  { id: 'cleaner2', name: 'Mike Johnson' },
-  { id: 'cleaner3', name: 'Sarah Davis' },
-];
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, where } from 'firebase/firestore';
 
 export const AdminDashboard: React.FC = () => {
   const { currentUser, logout } = useAuth();
+  const [allRequests, setAllRequests] = useState<GarbageRequest[]>([]);
+  const [cleaners, setCleaners] = useState<UserProfile[]>([]);
   const [selectedCleaner, setSelectedCleaner] = useState<{ [key: string]: string }>({});
 
-  const handleAssignCleaner = (requestId: string, cleanerId: string) => {
-    // TODO: Implement Firebase assignment update
-    console.log('Assigning request', requestId, 'to cleaner', cleanerId);
+  useEffect(() => {
+    const requestsQuery = query(collection(db, 'garbage_requests'), orderBy('createdAt', 'desc'));
+    const unsubscribeRequests = onSnapshot(requestsQuery, (snapshot) => {
+      const requestsData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+        } as GarbageRequest;
+      });
+      setAllRequests(requestsData);
+    });
+
+    const cleanersQuery = query(collection(db, 'users'), where('role', '==', 'cleaner'));
+    const unsubscribeCleaners = onSnapshot(cleanersQuery, (snapshot) => {
+      const cleanersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+      setCleaners(cleanersData);
+    });
+
+    return () => {
+      unsubscribeRequests();
+      unsubscribeCleaners();
+    };
+  }, []);
+
+  const handleAssignCleaner = async (requestId: string, cleanerId: string) => {
+    const cleaner = cleaners.find(c => c.id === cleanerId);
+    if (!cleaner) {
+      console.error("Selected cleaner not found");
+      return;
+    }
+
+    const requestDocRef = doc(db, 'garbage_requests', requestId);
+    try {
+      await updateDoc(requestDocRef, {
+        cleaner_id: cleaner.id,
+        cleanerName: cleaner.name,
+        status: 'assigned',
+        updatedAt: new Date(),
+      });
+      console.log('Request assigned successfully');
+    } catch (error) {
+      console.error("Error assigning request: ", error);
+    }
   };
 
   const getStatusBadge = (status: string) => {
     const variants = {
       pending: 'pending',
-      assigned: 'assigned', 
+      assigned: 'assigned',
       completed: 'completed'
     } as const;
-    
+
     return (
       <Badge variant={variants[status as keyof typeof variants] || 'default'}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -75,10 +77,10 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const stats = {
-    totalRequests: mockAllRequests.length,
-    pending: mockAllRequests.filter(r => r.status === 'pending').length,
-    assigned: mockAllRequests.filter(r => r.status === 'assigned').length,
-    completed: mockAllRequests.filter(r => r.status === 'completed').length,
+    totalRequests: allRequests.length,
+    pending: allRequests.filter(r => r.status === 'pending').length,
+    assigned: allRequests.filter(r => r.status === 'assigned').length,
+    completed: allRequests.filter(r => r.status === 'completed').length,
   };
 
   return (
@@ -163,7 +165,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="space-y-4">
           <h3 className="text-xl font-semibold">All Requests</h3>
           <div className="grid gap-4">
-            {mockAllRequests.map((request) => (
+            {allRequests.map((request) => (
               <Card key={request.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
@@ -187,7 +189,7 @@ export const AdminDashboard: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4" />
-                      <span>Created: {request.createdAt.toLocaleDateString()}</span>
+                      <span>Created: {new Date(request.createdAt).toLocaleDateString()}</span>
                     </div>
                     
                     {request.status === 'pending' ? (
@@ -200,7 +202,7 @@ export const AdminDashboard: React.FC = () => {
                             <SelectValue placeholder="Assign cleaner" />
                           </SelectTrigger>
                           <SelectContent>
-                            {mockCleaners.map((cleaner) => (
+                            {cleaners.map((cleaner) => (
                               <SelectItem key={cleaner.id} value={cleaner.id}>
                                 {cleaner.name}
                               </SelectItem>

@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { useAuth } from '@/contexts/AuthContext';
-import { Recycle, Users, Shield, ArrowRight } from 'lucide-react';
+import { isFirebaseConfigured } from '@/lib/firebase';
+import { Recycle, Users, Shield } from 'lucide-react';
 import heroImage from '@/assets/hero-image.jpg';
 
 const Index = () => {
@@ -85,29 +86,31 @@ const Index = () => {
             </div>
 
             {/* Firebase Notice */}
-            <Card className="bg-accent/50">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-3">
-                  <div className="bg-primary/10 p-2 rounded-lg">
-                    <Shield className="h-5 w-5 text-primary" />
+            {!isFirebaseConfigured && (
+              <Card className="bg-accent/50">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-primary/10 p-2 rounded-lg">
+                      <Shield className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-2">Firebase Setup Required</h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        To use CleanConnect, you need to configure Firebase with:
+                      </p>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Authentication (Email/Password)</li>
+                        <li>• Firestore Database</li>
+                        <li>• Storage (for photo uploads)</li>
+                      </ul>
+                      <p className="text-sm text-muted-foreground mt-3">
+                        Update the Firebase configuration in <code className="bg-muted px-1 rounded">src/lib/firebase.ts</code>
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Firebase Setup Required</h3>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      To use CleanConnect, you need to configure Firebase with:
-                    </p>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Authentication (Email/Password)</li>
-                      <li>• Firestore Database</li>
-                      <li>• Storage (for photo uploads)</li>
-                    </ul>
-                    <p className="text-sm text-muted-foreground mt-3">
-                      Update the Firebase configuration in <code className="bg-muted px-1 rounded">src/lib/firebase.ts</code>
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Hero Image & Auth */}
