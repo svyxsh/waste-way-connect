@@ -1,73 +1,122 @@
-# Welcome to your Lovable project
+CleanConnect - Modern Garbage Collection Management
+CleanConnect is a full-stack web application designed to manage garbage collection by connecting residents, cleaners, and administrators on a single, efficient platform. It provides a role-based system for creating, assigning, and tracking waste pickup requests in real-time.
 
-## Project info
+Features
+The application provides a unique dashboard and set of features for each user role:
 
-**URL**: https://lovable.dev/projects/6c12fa37-4a0a-475a-8bef-8888bdea240a
+1. Resident Dashboard
+Create Pickup Requests: Residents can submit new requests, including a description, an optional photo (which is compressed in-browser before upload), and a precise location selected from an interactive map.
 
-## How can I edit this code?
+Track Request Status: View a complete history of all submitted requests and track their current status (e.g., "Pending", "Assigned", "Completed").
 
-There are several ways of editing your application.
+View Details: See who their request is assigned to and view location details.
 
-**Use Lovable**
+2. Cleaner Dashboard
+Job Queue: View a dashboard of pickup requests that have been specifically assigned to them by an admin.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/6c12fa37-4a0a-475a-8bef-8888bdea240a) and start prompting.
+Request Details: Access all necessary information for a job, including the resident's name, request description, and a map of the pickup location.
 
-Changes made via Lovable will be committed automatically to this repo.
+Navigation: A "Navigate" button provides a direct link to Google Maps for the coordinates.
 
-**Use your preferred IDE**
+Mark Complete: Cleaners can mark jobs as "Completed" after finishing the pickup.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+3. Admin Dashboard
+Statistics: A high-level dashboard showing key metrics, including the total number of pending, assigned, and completed requests.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Manage All Requests: View and manage all requests submitted by all residents.
 
-Follow these steps:
+Assign Jobs: The primary function is to assign new "Pending" requests to an available cleaner from a dropdown list.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Tech Stack
+This project is built using a modern web development stack:
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Frontend: React & TypeScript
 
-# Step 3: Install the necessary dependencies.
-npm i
+Build Tool: Vite
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Backend & Database: Firebase
+
+Firebase Authentication: For user sign-up, sign-in, and role management.
+
+Firestore: NoSQL database for storing user profiles and garbage requests.
+
+Firebase Storage: For uploading and hosting user-submitted photos.
+
+Styling: Tailwind CSS with shadcn-ui for the component library.
+
+Routing: React Router
+
+State Management: React Query (TanStack Query) for server state and React Context for global auth state.
+
+Mapping: Leaflet & React-Leaflet for interactive maps and location picking.
+
+Forms: React Hook Form & Zod for form validation.
+
+Utilities:
+
+next-themes for light/dark mode.
+
+browser-image-compression for client-side image optimization.
+
+lucide-react for icons.
+
+Getting Started
+1. Prerequisites
+Node.js (v18 or higher)
+
+npm or Bun
+
+A Firebase project with Authentication, Firestore, and Storage enabled.
+
+2. Installation
+Clone the repository:
+
+Bash
+
+git clone https://github.com/your-username/waste-way-connect.git
+cd waste-way-connect
+Install dependencies:
+
+Bash
+
+npm install
+or
+
+Bash
+
+bun install
+3. Firebase Configuration
+The application requires Firebase credentials to run.
+
+Create a .env file in the root of the project.
+
+Go to your Firebase project settings and find your web app's configuration.
+
+Add the following variables to your .env file, replacing the placeholders with your project's keys:
+
+Code snippet
+
+VITE_FIREBASE_API_KEY=YOUR_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN=YOUR_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET=YOUR_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID=YOUR_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID=YOUR_APP_ID
+Note: The application includes a check and will display a warning on the homepage if these Firebase variables are not configured.
+
+4. Running the Project
+Run the development server:
+
+Bash
+
 npm run dev
-```
+The application will be available at http://localhost:8080 (or another port if 8080 is in use).
 
-**Edit a file directly in GitHub**
+Available Scripts
+npm run dev: Starts the Vite development server with hot-reloading.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+npm run build: Builds the application for production.
 
-**Use GitHub Codespaces**
+npm run lint: Lints the TypeScript and TSX files using ESLint.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/6c12fa37-4a0a-475a-8bef-8888bdea240a) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+npm run preview: Serves the production build locally for previewing.
